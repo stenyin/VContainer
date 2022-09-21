@@ -52,6 +52,17 @@ namespace VContainer.Internal
             registrations.Add(registration);
         }
 
+        public void RemoveAll(Func<Registration, bool> predicate)
+        {
+            for (var i = registrations.Count - 1; i >= 0; i--)
+            {
+                if (predicate(registrations[i]))
+                {
+                    registrations.RemoveAt(i);
+                }
+            }
+        }
+
         public void Merge(CollectionInstanceProvider other)
         {
             foreach (var x in other.registrations)

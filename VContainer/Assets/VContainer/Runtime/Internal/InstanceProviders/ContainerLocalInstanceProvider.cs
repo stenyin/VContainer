@@ -15,7 +15,20 @@ namespace VContainer.Internal
 
         public object SpawnInstance(IObjectResolver resolver)
         {
-            var value = resolver.Resolve(valueRegistration);
+            var localRegistraion = valueRegistration;
+            if (resolver is ScopedContainer scopedContainer)
+            {
+                var finderType = localRegistraion.InterfaceTypes != null
+                    ? localRegistraion.InterfaceTypes[0]
+                    : localRegistraion.ImplementationType;
+                localRegistraion = scopedContainer.FindRegistration(finderType);
+                if (localRegistraion.Provider is CollectionInstanceProvider collection)
+                {
+                    collection.RemoveAll(elementRegistration => elementRegistration.Lifetime == Lifetime.Singleton);
+                }
+            }
+
+            var value = resolver.Resolve(localRegistraion);
             var parameterValues = CappedArrayPool<object>.Shared8Limit.Rent(1);
             try
             {
