@@ -402,3 +402,11 @@ VContainer.Benchmark/obj/*
 
 .DS_Store
 
+# Godot 4+ specific ignores
+**/.godot/*
+/android/
+
+# Godot-specific ignores
+.import/
+export.cfg
+export_presets.cfg

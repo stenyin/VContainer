@@ -2,7 +2,7 @@
 # Visual Studio 2012
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VContainer.Godot", "VContainer.Godot.csproj", "{1988ECFB-2DDC-40D2-ABA3-550E623555FC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test", "Tests\Test.csproj", "{A366B638-B823-4442-BE3E-4EB783864945}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test", ".Tests\Test.csproj", "{A366B638-B823-4442-BE3E-4EB783864945}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
