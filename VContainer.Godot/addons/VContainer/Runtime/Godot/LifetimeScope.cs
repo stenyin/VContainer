@@ -46,28 +46,28 @@ public partial class LifetimeScope : Node, IDisposable
 		}
 	}
 
-	public ParentReference parentReference = new ParentReference();
+	internal ParentReference ParentReference = new();
 
 	[Export]
-	public string parentTypeName
+	public string ParentTypeName
 	{
-		get => parentReference.TypeName;
-		set => parentReference = ParentReference.Create(value);
+		get => ParentReference.TypeName;
+		set => ParentReference = ParentReference.Create(value);
 	}
 
 	[Export] public bool autoRun = true;
 	[Export] protected Node[] autoInjectGameObjects = Array.Empty<Node>();
-	string scopeName;
+	private string scopeName;
 
-	static readonly Stack<LifetimeScope> GlobalOverrideParents = new Stack<LifetimeScope>();
-	static readonly Stack<IInstaller> GlobalExtraInstallers = new Stack<IInstaller>();
-	static readonly object SyncRoot = new object();
+	private static readonly Stack<LifetimeScope> GlobalOverrideParents = new Stack<LifetimeScope>();
+	private static readonly Stack<IInstaller> GlobalExtraInstallers = new Stack<IInstaller>();
+	private static readonly object SyncRoot = new object();
 
-	static LifetimeScope Create(IInstaller installer = null)
+	private static LifetimeScope Create(IInstaller installer = null)
 	{
 		var node = new LifetimeScope();
 		node.SetName("LifetimeScope");
-		var variant = node.GetScript();
+		Variant variant = node.GetScript();
 		if (variant.Obj is LifetimeScope newScope)
 		{
 			newScope.localExtraInstallers.Add(installer);
@@ -76,6 +76,7 @@ public partial class LifetimeScope : Node, IDisposable
 		{
 			newScope = null;
 		}
+
 		Root.AddChild(node);
 		return newScope;
 	}
@@ -95,7 +96,7 @@ public partial class LifetimeScope : Node, IDisposable
 	public static LifetimeScope Find<T>(SceneTree scene) where T : LifetimeScope => Find(typeof(T), scene);
 	public static LifetimeScope Find<T>() where T : LifetimeScope => Find(typeof(T));
 
-	static LifetimeScope Find(Type type, SceneTree scene)
+	private static LifetimeScope Find(Type type, SceneTree scene)
 	{
 		if (type == typeof(RootLiftScope))
 		{
@@ -103,7 +104,7 @@ public partial class LifetimeScope : Node, IDisposable
 		}
 
 		var rootChildren = Root.GetChildren(true);
-		foreach (var child in rootChildren)
+		foreach (Node child in rootChildren)
 		{
 			if (child.GetType() == type)
 			{
@@ -111,20 +112,20 @@ public partial class LifetimeScope : Node, IDisposable
 			}
 		}
 
-		var childArray = scene.CurrentScene.GetChildren();
-		foreach (var node in childArray)
+		foreach (Node child in scene.CurrentScene.GetChildren())
 		{
-			var enumerable = node.GetChildren().Where(node => node.GetType() == type);
-			if (enumerable.Any())
+			foreach (Node node in child.GetChildren())
 			{
-				return enumerable.First() as LifetimeScope;
+				if (node.GetType() != type)
+					continue;
+				return node as LifetimeScope;
 			}
 		}
 
 		return null;
 	}
 
-	static LifetimeScope Find(Type type)
+	private static LifetimeScope Find(Type type)
 	{
 		return Find(type, Root.GetTree());
 	}
@@ -135,7 +136,7 @@ public partial class LifetimeScope : Node, IDisposable
 
 	public bool IsRoot => this == Root;
 
-	readonly List<IInstaller> localExtraInstallers = new List<IInstaller>();
+	private readonly List<IInstaller> localExtraInstallers = new List<IInstaller>();
 
 	public override void _EnterTree()
 	{
@@ -163,18 +164,17 @@ public partial class LifetimeScope : Node, IDisposable
 		DisposeCore();
 	}
 
-	protected virtual void Configure(IContainerBuilder builder) { }
-
-	public new void Dispose(bool disposing)
+	protected virtual void Configure(IContainerBuilder builder)
 	{
-		DisposeCore();
-		if (this != null)
-		{
-			QueueFree();
-		}
 	}
 
-	public void DisposeCore()
+	public new void Dispose()
+	{
+		DisposeCore();
+		QueueFree();
+	}
+
+	private void DisposeCore()
 	{
 		Container?.Dispose();
 		Container = null;
@@ -219,7 +219,7 @@ public partial class LifetimeScope : Node, IDisposable
 		RootLiftScope.ReadyWaitingChildren(this);
 	}
 
-	void SetContainer(IObjectResolver container)
+	private void SetContainer(IObjectResolver container)
 	{
 		Container = container;
 		AutoInjectAll();
@@ -234,7 +234,8 @@ public partial class LifetimeScope : Node, IDisposable
 		{
 			child.localExtraInstallers.Add(installer);
 		}
-		child.parentReference.Object = this;
+
+		child.ParentReference.Object = this;
 		this.AddChild(child);
 		return child;
 	}
@@ -250,13 +251,19 @@ public partial class LifetimeScope : Node, IDisposable
 
 	public TScope CreateChildFromPackedScene<TScope>(PackedScene scene, IInstaller installer = null) where TScope : LifetimeScope
 	{
-		var sceneNode = scene.Instantiate();
+		Node sceneNode = scene.Instantiate();
 		var child = sceneNode.GetChildren().FirstOrDefault() as TScope;
+		if (child == null)
+		{
+			throw new VContainerException(typeof(TScope), $"PackedScene {scene.ResourcePath} does not contain a {typeof(TScope)}");
+		}
+
 		if (installer != null)
 		{
 			child.localExtraInstallers.Add(installer);
 		}
-		child.parentReference.Object = this;
+
+		child.ParentReference.Object = this;
 		this.AddChild(child);
 		return child;
 	}
@@ -264,19 +271,20 @@ public partial class LifetimeScope : Node, IDisposable
 	public TScope CreateChildFromPackedScene<TScope>(PackedScene scene, Action<IContainerBuilder> installation) where TScope : LifetimeScope
 		=> CreateChildFromPackedScene<TScope>(scene, new ActionInstaller(installation));
 
-	void InstallTo(IContainerBuilder builder)
+	private void InstallTo(IContainerBuilder builder)
 	{
 		Configure(builder);
 
-		foreach (var installer in localExtraInstallers)
+		foreach (IInstaller installer in localExtraInstallers)
 		{
 			installer.Install(builder);
 		}
+
 		localExtraInstallers.Clear();
 
 		lock (SyncRoot)
 		{
-			foreach (var installer in GlobalExtraInstallers)
+			foreach (IInstaller installer in GlobalExtraInstallers)
 			{
 				installer.Install(builder);
 			}
@@ -285,46 +293,45 @@ public partial class LifetimeScope : Node, IDisposable
 		builder.RegisterInstance<LifetimeScope>(this).AsSelf();
 		EntryPointsBuilder.EnsureDispatcherRegistered(builder);
 	}
-	
+
 	protected virtual LifetimeScope FindParent() => null;
 
-	LifetimeScope GetRuntimeParent()
+	private LifetimeScope GetRuntimeParent()
 	{
 		if (IsRoot) return null;
 
-		if (parentReference.Type == null)
+		if (ParentReference.Type == null)
 		{
-			parentReference = ParentReference.Create<RootLiftScope>();
+			ParentReference = ParentReference.Create<RootLiftScope>();
 		}
 
-		if (parentReference.Object != null)
-			return parentReference.Object;
+		if (ParentReference.Object != null)
+			return ParentReference.Object;
 
 		// Find via implementation
-		var implParent = FindParent();
+		LifetimeScope implParent = FindParent();
 		if (implParent != null)
 		{
-			if (parentReference.Type != null && parentReference.Type != implParent.GetType())
+			if (ParentReference.Type != null && ParentReference.Type != implParent.GetType())
 			{
-				GD.PushWarning(
-					$"FindParent returned {implParent.GetType()} but parent parentReference type is {parentReference.Type}. This may be unintentional.");
+				GD.PushWarning($"FindParent returned {implParent.GetType()} but parent parentReference type is {ParentReference.Type}. This may be unintentional.");
 			}
 
 			return implParent;
 		}
 
 		// Find in scene via type
-		if (parentReference.Type != null && parentReference.Type != GetType())
+		if (ParentReference.Type != null && ParentReference.Type != GetType())
 		{
-			var foundScope = Find(parentReference.Type);
+			LifetimeScope foundScope = Find(ParentReference.Type);
 			if (foundScope != null && foundScope.Container != null)
 			{
 				return foundScope;
 			}
 
 			throw new VContainerParentTypeReferenceNotFound(
-				parentReference.Type,
-				$"{Name} could not found parent reference of type : {parentReference.Type}");
+				ParentReference.Type,
+				$"{Name} could not found parent reference of type : {ParentReference.Type}");
 		}
 
 		lock (SyncRoot)
@@ -338,12 +345,12 @@ public partial class LifetimeScope : Node, IDisposable
 		return null;
 	}
 
-	void AutoInjectAll()
+	private void AutoInjectAll()
 	{
 		if (autoInjectGameObjects == null)
 			return;
 
-		foreach (var target in autoInjectGameObjects)
+		foreach (Node target in autoInjectGameObjects)
 		{
 			if (target != null) // Check missing reference
 			{

@@ -6,6 +6,6 @@
     <EnableDynamicLoading>true</EnableDynamicLoading>
   </PropertyGroup>
   <ItemGroup>
-    <Folder Include="Test\" />
+    <None Include="Test\*" />
   </ItemGroup>
 </Project>

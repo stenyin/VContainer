@@ -1,5 +1,6 @@
 using Godot;
 using System.Collections.Generic;
+using VContainer.Internal;
 
 namespace VContainer.Godot;
 
@@ -17,11 +18,11 @@ public partial class RootLiftScope : LifetimeScope
 
 		Root = instance = this;
 		TreeRoot = GetTree().Root;
-		
+
 		base._EnterTree();
 		TreeRoot.ChildEnteredTree += OnChildEnteredTreeRoot;
 	}
-	
+
 	public override void _ExitTree()
 	{
 		if (instance == this)
@@ -29,12 +30,13 @@ public partial class RootLiftScope : LifetimeScope
 			instance = null;
 			Root = null;
 		}
+
 		TreeRoot.ChildEnteredTree -= OnChildEnteredTreeRoot;
 		TreeRoot = null;
 	}
-    
+
 	static readonly List<LifetimeScope> WaitingList = new List<LifetimeScope>();
-	
+
 	internal static bool WaitingListContains(LifetimeScope lifetimeScope)
 	{
 		return WaitingList.Contains(lifetimeScope);
@@ -49,57 +51,61 @@ public partial class RootLiftScope : LifetimeScope
 	{
 		WaitingList.Remove(lifetimeScope);
 	}
-	
-    public static void ReadyWaitingChildren(LifetimeScope awakenParent)
-    {
-        if (WaitingList.Count <= 0) return;
 
-        List<LifetimeScope> buffer = new ();
-        for (var i = WaitingList.Count - 1; i >= 0; i--)
-        {
-            var waitingScope = WaitingList[i];
-            if (waitingScope.parentReference.Type == awakenParent.GetType())
-            {
-                waitingScope.parentReference.Object = awakenParent;
-                WaitingList.RemoveAt(i);
-                buffer.Add(waitingScope);
-            }
-        }
+	public static void ReadyWaitingChildren(LifetimeScope awakenParent)
+	{
+		if (WaitingList.Count <= 0) return;
 
-        foreach (var waitingScope in buffer)
-        {
-            waitingScope.RequestReady();
-        }
-    }
+		using (ListPool<LifetimeScope>.Get(out var buffer))
+		{
+			for (var i = WaitingList.Count - 1; i >= 0; i--)
+			{
+				var waitingScope = WaitingList[i];
+				if (waitingScope.ParentReference.Type == awakenParent.GetType())
+				{
+					waitingScope.ParentReference.Object = awakenParent;
+					WaitingList.RemoveAt(i);
+					buffer.Add(waitingScope);
+				}
+			}
 
-    private static void OnChildEnteredTreeRoot(Node child)
-    {
-        // Ignore if child is not in the current scene
-        if (child != child.GetTree().CurrentScene)
-	        return;
-        
-        OnSceneChange(child);
-    }
-    
-    private static void OnSceneChange(Node child)
+			foreach (var waitingScope in buffer)
+			{
+				waitingScope.RequestReady();
+			}
+		}
+	}
+
+	private static void OnChildEnteredTreeRoot(Node child)
+	{
+		// Ignore if child is not in the current scene
+		if (child != child.GetTree().CurrentScene)
+			return;
+
+		OnSceneChange(child);
+	}
+
+	private static void OnSceneChange(Node child)
 	{
 		if (WaitingList.Count <= 0)
 			return;
 
-		List<LifetimeScope> buffer = new ();
-		for (var i = WaitingList.Count - 1; i >= 0; i--)
+		using (ListPool<LifetimeScope>.Get(out var buffer))
 		{
-			var waitingScope = WaitingList[i];
-			if (child.GetTree().CurrentScene == waitingScope.GetTree().CurrentScene)
+			for (var i = WaitingList.Count - 1; i >= 0; i--)
 			{
-				WaitingList.RemoveAt(i);
-				buffer.Add(waitingScope);
+				var waitingScope = WaitingList[i];
+				if (child.GetTree().CurrentScene == waitingScope.GetTree().CurrentScene)
+				{
+					WaitingList.RemoveAt(i);
+					buffer.Add(waitingScope);
+				}
 			}
-		}
 
-		foreach (var waitingScope in buffer)
-		{
-			waitingScope._Ready(); // Re-throw if parent not found
+			foreach (var waitingScope in buffer)
+			{
+				waitingScope._Ready(); // Re-throw if parent not found
+			}
 		}
 	}
 }

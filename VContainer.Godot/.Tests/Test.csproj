@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net6.0</TargetFramework>
+        <TargetFramework Condition=" '$(GodotTargetPlatform)' == 'android' ">net7.0</TargetFramework>
+        <TargetFramework Condition=" '$(GodotTargetPlatform)' == 'ios' ">net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <IsPackable>false</IsPackable>
+        <IsTestProject>true</IsTestProject>
+        <RootNamespace>VContainer.Tests</RootNamespace>
+        <AssemblyName>VContainer.Tests</AssemblyName>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <BaseIntermediateOutputPath>..\.mono\nunit\obj\$(Configuration)\</BaseIntermediateOutputPath>
+        <OutputPath>..\.mono\nunit\bin\$(Configuration)</OutputPath>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\VContainer.Godot.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+      <PackageReference Include="NUnit" Version="4.2.2" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Remove="obj\project.assets.json"/>
+        <None Remove="obj\project.nuget.cache"/>
+        <None Remove="obj\project.packagespec.json"/>
+        <None Remove="obj\rider.project.model.nuget.info"/>
+        <None Remove="obj\rider.project.restore.info"/>
+        <None Remove="obj\Test.csproj.nuget.dgspec.json"/>
+        <None Remove="obj\Test.csproj.nuget.g.props"/>
+        <None Remove="obj\Test.csproj.nuget.g.targets"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Using Include="NUnit.Framework"/>
+    </ItemGroup>
+</Project>
