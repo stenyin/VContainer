@@ -2,6 +2,6 @@ namespace VContainer.Godot
 {
     public interface ITickable
     {
-        void Tick();
+        void Tick(long frameCount);
     }
 }

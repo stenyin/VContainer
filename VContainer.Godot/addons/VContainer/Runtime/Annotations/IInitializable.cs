@@ -1,7 +1,6 @@
-namespace VContainer.Godot
+namespace VContainer.Godot;
+
+public interface IInitializable
 {
-    public interface IInitializable
-    {
-        void Initialize();
-    }
+	void Initialize();
 }
