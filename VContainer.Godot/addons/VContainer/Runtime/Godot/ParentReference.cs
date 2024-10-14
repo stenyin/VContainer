@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel.DataAnnotations;
 using Godot;
 
 namespace VContainer.Godot;
@@ -24,47 +25,45 @@ public partial struct ParentReference
 
 	public LifetimeScope Object;
 
+	[Required] public Type OwnerType { get; init; }
 	public Type Type { get; private set; }
-
-	public ParentReference()
-	{
-		Type = null;
-		typeName = null;
-		Object = null;
-	}
 	
 	ParentReference(Type type) : this()
 	{
 		Type = type;
-		TypeName = type.FullName;
+		typeName = type.FullName;
+		Object = null;
+	}
+	
+	
+	ParentReference(Type ownerType, Type type) : this()
+	{
+		Type = type;
+		typeName = type.FullName;
 		Object = null;
 	}
 
 	private void OnBeforeSerialize()
 	{
-		TypeName = Type?.FullName;
+		this.typeName = Type?.FullName;
 	}
 
 	public void OnAfterDeserialize()
 	{
-		if (!string.IsNullOrEmpty(TypeName))
+		if (!string.IsNullOrEmpty(typeName))
 		{
 			foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
 			{
-				Type = assembly.GetType(TypeName);
+				Type = assembly.GetType(typeName);
 				if (Type != null)
 					break;
 			}
 		}
+		else
+		{
+			Type = null;
+		}
 	}
 
-	public static ParentReference Create<T>() where T : LifetimeScope
-	{
-		return new ParentReference(typeof(T));
-	}
-	
-	public static ParentReference Create(string typeName)
-	{
-		return new ParentReference(Type.GetType(typeName));
-	}
+	public static ParentReference Create<T>(Type ownerType) => new ParentReference(ownerType, typeof(T));
 }
