@@ -14,6 +14,10 @@ config/name="VContainer.Godot"
 config/features=PackedStringArray("4.4", "C#", "Forward Plus")
 config/icon="res://icon.svg"
 
+[autoload]
+
+RootLiftScope="*res://addons/VContainer/Runtime/Godot/RootLiftScope.cs"
+
 [dotnet]
 
 project/assembly_name="VContainer.Godot"

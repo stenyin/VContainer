@@ -24,6 +24,8 @@ public partial class ParentReferenceEditorProperty : EditorProperty
 	{
 		AddChild(optionButton);
 		AddFocusable(optionButton);
+		
+		optionButton.ItemSelected += HandleOptionItemSelected;
 	}
 	
 	public override void _UpdateProperty()
@@ -31,9 +33,6 @@ public partial class ParentReferenceEditorProperty : EditorProperty
 		if (names == null)
 		{
 			names = GetAllTypeNames();
-			var scope = GetEditedObject() as LifetimeScope;
-			var lifetimeScopeName = scope.GetType().FullName;
-			names = names.Where(name => name != lifetimeScopeName).ToArray();
 		}
 		
 		optionButton.Clear();
@@ -42,9 +41,16 @@ public partial class ParentReferenceEditorProperty : EditorProperty
 			optionButton.AddItem(name);
 		}
 		
-		var referenceTypeName = (string) GetEditedObject().Get(GetEditedProperty());
-		var index = Array.IndexOf(names, referenceTypeName);
-		optionButton.Selected = index;
+		var value = GetEditedObject().Get(GetEditedProperty()).AsString();
+		var index = Array.IndexOf(names, value);
+		optionButton.Select(index);
+		
+	}
+	
+	private void HandleOptionItemSelected(long index)
+	{
+		GetEditedObject().Set(GetEditedProperty(), names[index]);
+		GD.Print(GetEditedObject().Get(GetEditedProperty()));
 	}
 }
 #endif

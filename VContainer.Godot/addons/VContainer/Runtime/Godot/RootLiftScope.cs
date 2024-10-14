@@ -61,9 +61,9 @@ public partial class RootLiftScope : LifetimeScope
 			for (var i = WaitingList.Count - 1; i >= 0; i--)
 			{
 				var waitingScope = WaitingList[i];
-				if (waitingScope.ParentReference.Type == awakenParent.GetType())
+				if (waitingScope.parentReference.Type == awakenParent.GetType())
 				{
-					waitingScope.ParentReference.Object = awakenParent;
+					waitingScope.parentReference.Object = awakenParent;
 					WaitingList.RemoveAt(i);
 					buffer.Add(waitingScope);
 				}
