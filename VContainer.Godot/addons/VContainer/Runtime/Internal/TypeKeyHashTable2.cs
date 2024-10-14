@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
+#nullable enable
+
 namespace VContainer.Internal
 {
     sealed class TypeKeyHashTable2<TValue>
@@ -58,7 +60,7 @@ namespace VContainer.Internal
             }
         }
 
-        public bool TryGet(Type key, out TValue value)
+        public bool TryGet(Type key, out TValue? value)
         {
             var hash = RuntimeHelpers.GetHashCode(key);
             var distAndFingerPrint = Bucket.DistAndFingerPrintFromHash(hash);

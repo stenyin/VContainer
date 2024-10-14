@@ -1,7 +1,6 @@
-namespace VContainer.Godot
+namespace VContainer.Godot;
+
+public interface IPostInitializable
 {
-    public interface IPostInitializable
-    {
-        void PostInitialize();
-    }
+	void PostInitialize();
 }
