@@ -4,11 +4,11 @@ using VContainer.Godot;
 #if TOOLS
 namespace VContainer.Editor;
 
-public partial class LifeScopeInspectorPlugin: EditorInspectorPlugin
+public partial class LifeScopeInspectorPlugin : EditorInspectorPlugin
 {
 	public override bool _CanHandle(GodotObject @object)
 	{
-		return @object is Node node && ((string)node.GetName()).EndsWith("LifetimeScope");
+		return @object is Node node && (node.GetScript().As<CSharpScript>()?.ResourcePath.EndsWith("LifetimeScope.cs") ?? false);
 	}
 
 	public override bool _ParseProperty(GodotObject @object, Variant.Type type, string name, PropertyHint hintType, string hintString, PropertyUsageFlags usageFlags, bool wide)

@@ -35,7 +35,7 @@ namespace VContainer.Internal
         readonly KeyValuePair<Type, TValue>[] entries;
         readonly int indexFor;
 
-        int insertedEntryLength;
+        // int insertedEntryLength;
 
         public TypeKeyHashTable2(KeyValuePair<Type, TValue>[] values, float loadFactor = 0.75f)
         {
