@@ -26,4 +26,13 @@ public static class ContainerBuilderNodeExtensions
 	{
 		builder.RegisterInstance(new EntryPointExceptionHandler(exceptionHandler));
 	}
+
+
+	public static RegistrationBuilder RegisterNode<TInterface>(this IContainerBuilder builder, TInterface node)
+	{
+		var registrationBuilder = new NodeRegistrationBuilder(node).As(typeof(TInterface));
+		// Force inject execution
+		builder.RegisterBuildCallback(container => container.Resolve<TInterface>());
+		return builder.Register(registrationBuilder);
+	}
 }

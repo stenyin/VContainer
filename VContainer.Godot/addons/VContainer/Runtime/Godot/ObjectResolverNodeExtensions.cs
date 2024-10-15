@@ -4,7 +4,7 @@ namespace VContainer.Godot;
 
 public static class ObjectResolverNodeExtensions
 {
-	public static void InjectNode(this IObjectResolver resolver, Node gameObject)
+	public static void InjectNode(this IObjectResolver resolver, Node node)
         {
             void InjectNodeRecursive(Node current)
             {
@@ -20,7 +20,7 @@ public static class ObjectResolverNodeExtensions
                 }
             }
 
-            InjectNodeRecursive(gameObject);
+            InjectNodeRecursive(node);
         }
 
         public static T Instantiate<T>(this IObjectResolver resolver, PackedScene prefab, Node parent) where T : Node
