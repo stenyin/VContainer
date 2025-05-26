@@ -17,6 +17,7 @@ config/icon="res://icon.svg"
 [autoload]
 
 RootLiftScope="*res://addons/VContainer/Runtime/Godot/RootLiftScope.cs"
+VContainerFrameProviderDispatcher="*res://addons/VContainer/Runtime/Godot/FrameProviderDispatcher.cs"
 
 [dotnet]
 

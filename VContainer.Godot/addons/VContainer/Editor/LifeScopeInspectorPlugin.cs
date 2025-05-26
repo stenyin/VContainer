@@ -1,5 +1,4 @@
 using Godot;
-using VContainer.Godot;
 
 #if TOOLS
 namespace VContainer.Editor;

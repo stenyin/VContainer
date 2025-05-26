@@ -153,7 +153,9 @@ public partial class LifetimeScope : Node, IDisposable
 		DisposeCore();
 	}
 
-	protected virtual void Configure(IContainerBuilder builder) { }
+	protected virtual void Configure(IContainerBuilder builder)
+	{
+	}
 
 
 	public new void Dispose()
@@ -306,6 +308,7 @@ public partial class LifetimeScope : Node, IDisposable
 			{
 				GD.PushWarning($"FindParent returned {implParent.GetType()} but parent parentReference type is {ParentReference.Type}. This may be unintentional.");
 			}
+
 			return implParent;
 		}
 
@@ -336,7 +339,7 @@ public partial class LifetimeScope : Node, IDisposable
 			GD.PushWarning("Parent reference cannot be same as self.");
 			ParentReference = ParentReference.Create<RootLiftScope>(GetType());
 		}
-		
+
 		if (ParentReference.Type != null && ParentReference.Type != GetType())
 		{
 			if (Find(ParentReference.Type) is { Container: not null } foundScope)
@@ -344,6 +347,7 @@ public partial class LifetimeScope : Node, IDisposable
 
 			throw new VContainerParentTypeReferenceNotFound(ParentReference.Type, $"{Name} could not found parent reference of type : {ParentReference.Type}");
 		}
+
 		return null;
 	}
 

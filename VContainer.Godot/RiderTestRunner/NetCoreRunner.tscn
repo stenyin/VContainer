@@ -1,0 +1,14 @@
+[gd_scene load_steps=2 format=3 uid="uid://djok6qtvlks1r"]
+
+[ext_resource type="Script" uid="uid://cl1k1vn6nutno" path="res://RiderTestRunner/NetCoreRunner.cs" id="1_5he5v"]
+
+[node name="Node" type="Node"]
+script = ExtResource("1_5he5v")
+
+[node name="RichTextLabel" type="RichTextLabel" parent="."]
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 500.0
+offset_bottom = 200.0
+scale = Vector2(2, 2)
+text = "Loading"
