@@ -3,365 +3,378 @@ using System.Collections.Generic;
 using System.Linq;
 using Godot;
 using Godot.Collections;
-using Array = System.Array;
 
 namespace VContainer.Godot;
 
-[GlobalClass]
-public partial class LifetimeScope : Node, IDisposable
+[GlobalClass, GodotClassName("LifetimeScope")]
+public partial class LifetimeScope : Node
 {
-	public readonly struct ParentOverrideScope : IDisposable
-	{
-		public ParentOverrideScope(LifetimeScope nextParent)
-		{
-			lock (SyncRoot)
-			{
-				GlobalOverrideParents.Push(nextParent);
-			}
-		}
+    public readonly struct ParentOverrideScope : IDisposable
+    {
+        public ParentOverrideScope(LifetimeScope nextParent)
+        {
+            lock (SyncRoot)
+            {
+                GlobalOverrideParents.Push(nextParent);
+            }
+        }
 
-		public void Dispose()
-		{
-			lock (SyncRoot)
-			{
-				GlobalOverrideParents.Pop();
-			}
-		}
-	}
+        public void Dispose()
+        {
+            lock (SyncRoot)
+            {
+                GlobalOverrideParents.Pop();
+            }
+        }
+    }
 
-	public readonly struct ExtraInstallationScope : IDisposable
-	{
-		public ExtraInstallationScope(IInstaller installer)
-		{
-			lock (SyncRoot)
-				GlobalExtraInstallers.Push(installer);
-		}
+    public readonly struct ExtraInstallationScope : IDisposable
+    {
+        public ExtraInstallationScope(IInstaller installer)
+        {
+            lock (SyncRoot)
+                GlobalExtraInstallers.Push(installer);
+        }
 
-		void IDisposable.Dispose()
-		{
-			lock (SyncRoot)
-				GlobalExtraInstallers.Pop();
-		}
-	}
+        void IDisposable.Dispose()
+        {
+            lock (SyncRoot)
+                GlobalExtraInstallers.Pop();
+        }
+    }
 
-	public ParentReference ParentReference;
+    static readonly Stack<LifetimeScope> GlobalOverrideParents = new Stack<LifetimeScope>();
+    static readonly Stack<IInstaller> GlobalExtraInstallers = new Stack<IInstaller>();
 
-	[Export]
-	public string parentTypeName
-	{
-		get => ParentReference.TypeName;
-		set => ParentReference.TypeName = value;
-	}
+    protected static RootLiftScope Root { get; set; }
+    static readonly object SyncRoot = new();
+    bool _isDisposed;
 
-	[Export] public bool autoRun = true;
-	[Export] protected Node[] autoInjectGameObjects = Array.Empty<Node>();
-	string scopeName;
+    [Export]
+    public string ParentTypeName
+    {
+        get => parentReference.TypeName;
+        set => parentReference.TypeName = value;
+    }
 
-	static readonly Stack<LifetimeScope> GlobalOverrideParents = new Stack<LifetimeScope>();
-	static readonly Stack<IInstaller> GlobalExtraInstallers = new Stack<IInstaller>();
-	static readonly object SyncRoot = new object();
+    [Export] bool autoRun = true;
+    [Export] Node[] autoInjectGameObjects = [];
 
-	static LifetimeScope Create(IInstaller installer = null)
-	{
-		var node = new LifetimeScope();
-		node.SetName("LifetimeScope");
-		node.localExtraInstallers.Add(installer);
-		Root.AddChild(node);
-		return node;
-	}
+    string scopeName;
+    ParentReference parentReference;
 
-	public static LifetimeScope Create(Action<IContainerBuilder> configuration) => Create(new ActionInstaller(configuration));
-	public static ParentOverrideScope EnqueueParent(LifetimeScope parent) => new ParentOverrideScope(parent);
-	public static ExtraInstallationScope Enqueue(Action<IContainerBuilder> installing) => new ExtraInstallationScope(new ActionInstaller(installing));
-	public static ExtraInstallationScope Enqueue(IInstaller installer) => new ExtraInstallationScope(installer);
-	public static LifetimeScope Find<T>(SceneTree scene) where T : LifetimeScope => Find(typeof(T), scene);
-	public static LifetimeScope Find<T>() where T : LifetimeScope => Find(typeof(T));
+    static LifetimeScope Create(IInstaller installer = null)
+    {
+        var node = new LifetimeScope();
+        node.SetName("LifetimeScope");
+        node.localExtraInstallers.Add(installer);
+        Root.AddChild(node);
+        return node;
+    }
 
-	static LifetimeScope Find(Type type, SceneTree scene)
-	{
-		if (type == typeof(RootLiftScope))
-		{
-			return Root;
-		}
+    public static LifetimeScope Create(Action<IContainerBuilder> configuration) => Create(new ActionInstaller(configuration));
+    public static ParentOverrideScope EnqueueParent(LifetimeScope parent) => new ParentOverrideScope(parent);
+    public static ExtraInstallationScope Enqueue(Action<IContainerBuilder> installing) => new ExtraInstallationScope(new ActionInstaller(installing));
+    public static ExtraInstallationScope Enqueue(IInstaller installer) => new ExtraInstallationScope(installer);
+    public static LifetimeScope Find<T>(SceneTree scene) where T : LifetimeScope => Find(typeof(T), scene);
+    public static LifetimeScope Find<T>() where T : LifetimeScope => Find(typeof(T));
 
-		Array<Node> rootChildren = Root.GetChildren(true);
-		foreach (Node child in rootChildren)
-		{
-			if (child.GetType() == type)
-			{
-				return child as LifetimeScope;
-			}
-		}
+    static LifetimeScope Find(Type type, SceneTree scene)
+    {
+        if (type == typeof(RootLiftScope))
+        {
+            return Root;
+        }
 
-		Array<Node> childArray = scene.CurrentScene.GetChildren();
-		if (scene.CurrentScene is LifetimeScope lifetimeScope && lifetimeScope.GetType() == type)
-		{
-			return lifetimeScope;
-		}
+        Array<Node> rootChildren = Root.GetChildren(true);
+        foreach (Node child in rootChildren)
+        {
+            if (child.GetType() == type)
+            {
+                return child as LifetimeScope;
+            }
+        }
 
-		foreach (Node child in childArray)
-		{
-			if (child.GetType() == type)
-			{
-				return child as LifetimeScope;
-			}
-		}
+        Array<Node> childArray = scene.CurrentScene.GetChildren();
+        if (scene.CurrentScene is LifetimeScope lifetimeScope && lifetimeScope.GetType() == type)
+        {
+            return lifetimeScope;
+        }
 
-		return null;
-	}
+        foreach (Node child in childArray)
+        {
+            if (child.GetType() == type)
+            {
+                return child as LifetimeScope;
+            }
+        }
 
-	static LifetimeScope Find(Type type) => Find(type, Root.GetTree());
-	protected static RootLiftScope Root { get; set; }
-	public IObjectResolver Container { get; private set; }
-	public LifetimeScope Parent { get; private set; }
+        return null;
+    }
 
-	public bool IsRoot => this == Root;
+    static LifetimeScope Find(Type type) => Find(type, Root.GetTree());
 
-	readonly List<IInstaller> localExtraInstallers = new List<IInstaller>();
+    readonly List<IInstaller> localExtraInstallers = [];
+    public IObjectResolver Container { get; private set; }
+    public LifetimeScope Parent { get; private set; }
+    public bool IsRoot => this == Root;
+    public Type ParentType => parentReference.Type;
 
-	public LifetimeScope() : base()
-	{
-		ParentReference = new ParentReference()
-		{
-			OwnerType = GetType()
-		};
-	}
+    public LifetimeScope()
+    {
+        parentReference = new ParentReference()
+        {
+            OwnerType = GetType(),
+            TypeName = "None"
+        };
+    }
 
-	public override void _EnterTree()
-	{
-		try
-		{
-			Parent = GetRuntimeParent();
-			if (autoRun)
-			{
-				Build();
-			}
-		}
-		catch (VContainerParentTypeReferenceNotFound) when (!IsRoot)
-		{
-			if (RootLiftScope.WaitingListContains(this))
-			{
-				throw;
-			}
+    public override void _EnterTree()
+    {
+	    if (Engine.IsEditorHint())
+	    {
+		    return;
+	    }
+	    
+        try
+        {
+            if (!IsRoot)
+            {
+                Parent = GetRuntimeParent();
+            }
 
-			RootLiftScope.EnqueueReady(this);
-		}
-	}
+            if (autoRun)
+            {
+                Build();
+            }
+        }
+        catch (VContainerParentTypeReferenceNotFound) when (!IsRoot)
+        {
+            if (RootLiftScope.WaitingListContains(this))
+            {
+                throw;
+            }
 
-	public override void _ExitTree()
-	{
-		DisposeCore();
-	}
+            RootLiftScope.EnqueueReady(this);
+        }
+    }
+    
+    public sealed override void _ExitTree()
+    {
+	    if (Engine.IsEditorHint())
+	    {
+		    return;
+	    }
+	    
+        DisposeCore();
+    }
 
-	protected virtual void Configure(IContainerBuilder builder)
-	{
-	}
+    protected virtual void Configure(IContainerBuilder builder) { }
+    
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        if (!disposing)
+            return;
+
+        DisposeCore();
+    }
+
+    void DisposeCore()
+    {
+	    if(_isDisposed) return;
+	    _isDisposed = true;
+	    
+        Container?.Dispose();
+        Container = null;
+        RootLiftScope.CancelReady(this);
+    }
+
+    public void Build()
+    {
+        if (!IsRoot)
+        {
+            Parent ??= GetRuntimeParent();
+        }
+
+        if (Parent != null)
+        {
+            if (Parent.IsRoot && Parent.Container == null)
+            {
+                Parent.Build();
+            }
+
+            // ReSharper disable once PossibleNullReferenceException
+            Parent.Container.CreateScope(builder =>
+            {
+                builder.RegisterBuildCallback(SetContainer);
+                builder.ApplicationOrigin = this;
+                builder.Diagnostics = null; // TODO: DiagnosticsContext.GetCollector(scopeName),
+                InstallTo(builder);
+            });
+        }
+        else
+        {
+            var builder = new ContainerBuilder
+            {
+                ApplicationOrigin = this,
+                Diagnostics = null, // TODO: DiagnosticsContext.GetCollector(scopeName),
+            };
+
+            builder.RegisterBuildCallback(SetContainer);
+            InstallTo(builder);
+            builder.Build();
+        }
+
+        RootLiftScope.ReadyWaitingChildren(this);
+    }
+
+    void SetContainer(IObjectResolver container)
+    {
+        Container = container;
+        AutoInjectAll();
+    }
 
 
-	public new void Dispose()
-	{
-		Dispose(true);
-		GC.SuppressFinalize(this);
-	}
+    public TScope CreateChild<TScope>(IInstaller installer = null) where TScope : LifetimeScope, new()
+    {
+        var child = new TScope();
+        child.SetName("LifetimeScope (Child)");
+        if (installer != null)
+        {
+            child.localExtraInstallers.Add(installer);
+        }
 
-	protected new virtual void Dispose(bool disposing)
-	{
-		if (!disposing)
-			return;
+        child.parentReference.Object = this;
+        AddChild(child);
+        return child;
+    }
 
-		DisposeCore();
-		QueueFree();
-	}
+    public LifetimeScope CreateChild(IInstaller installer = null) => CreateChild<LifetimeScope>(installer);
 
-	void DisposeCore()
-	{
-		Container?.Dispose();
-		Container = null;
-		RootLiftScope.CancelReady(this);
-	}
+    public TScope CreateChild<TScope>(Action<IContainerBuilder> installation) where TScope : LifetimeScope, new()
+        => CreateChild<TScope>(new ActionInstaller(installation));
 
-	public void Build()
-	{
-		Parent ??= GetRuntimeParent();
+    public LifetimeScope CreateChild(Action<IContainerBuilder> installation) => CreateChild<LifetimeScope>(new ActionInstaller(installation));
 
-		if (Parent != null)
-		{
-			if (Parent.IsRoot)
-			{
-				if (Parent.Container == null)
-					Parent.Build();
-			}
+    public TScope CreateChildFromPackedScene<TScope>(PackedScene scene, IInstaller installer = null) where TScope : LifetimeScope
+    {
+        Node sceneNode = scene.Instantiate();
+        var child = sceneNode.GetChildren().FirstOrDefault() as TScope;
+        if (child == null)
+        {
+            GD.PushWarning($"PackedScene {scene.ResourcePath} does not contain a {typeof(TScope).Name}.");
+            return null;
+        }
 
-			// ReSharper disable once PossibleNullReferenceException
-			Parent.Container.CreateScope(builder =>
-			{
-				builder.RegisterBuildCallback(SetContainer);
-				builder.ApplicationOrigin = this;
-				builder.Diagnostics = null; // TODO: DiagnosticsContext.GetCollector(scopeName),
-				InstallTo(builder);
-			});
-		}
-		else
-		{
-			var builder = new ContainerBuilder
-			{
-				ApplicationOrigin = this,
-				Diagnostics = null, // TODO: DiagnosticsContext.GetCollector(scopeName),
-			};
+        if (installer != null)
+        {
+            child.localExtraInstallers.Add(installer);
+        }
 
-			builder.RegisterBuildCallback(SetContainer);
-			InstallTo(builder);
-			builder.Build();
-		}
+        child.parentReference.Object = this;
+        AddChild(child);
+        return child;
+    }
 
-		RootLiftScope.ReadyWaitingChildren(this);
-	}
+    public TScope CreateChildFromPackedScene<TScope>(PackedScene scene, Action<IContainerBuilder> installation) where TScope : LifetimeScope
+        => CreateChildFromPackedScene<TScope>(scene, new ActionInstaller(installation));
 
-	void SetContainer(IObjectResolver container)
-	{
-		Container = container;
-		AutoInjectAll();
-	}
+    void InstallTo(IContainerBuilder builder)
+    {
+        Configure(builder);
 
+        foreach (IInstaller installer in localExtraInstallers)
+        {
+            installer.Install(builder);
+        }
 
-	public TScope CreateChild<TScope>(IInstaller installer = null) where TScope : LifetimeScope, new()
-	{
-		var child = new TScope();
-		child.SetName("LifetimeScope (Child)");
-		if (installer != null)
-		{
-			child.localExtraInstallers.Add(installer);
-		}
+        localExtraInstallers.Clear();
 
-		child.ParentReference.Object = this;
-		this.AddChild(child);
-		return child;
-	}
+        lock (SyncRoot)
+        {
+            foreach (IInstaller installer in GlobalExtraInstallers)
+            {
+                installer.Install(builder);
+            }
+        }
 
-	public LifetimeScope CreateChild(IInstaller installer = null) => CreateChild<LifetimeScope>(installer);
+        builder.RegisterInstance(this).AsSelf();
+        EntryPointsBuilder.EnsureDispatcherRegistered(builder);
+    }
 
-	public TScope CreateChild<TScope>(Action<IContainerBuilder> installation) where TScope : LifetimeScope, new()
-		=> CreateChild<TScope>(new ActionInstaller(installation));
+    protected virtual LifetimeScope FindParent() => null;
 
-	public LifetimeScope CreateChild(Action<IContainerBuilder> installation) => CreateChild<LifetimeScope>(new ActionInstaller(installation));
+    LifetimeScope GetRuntimeParent()
+    {
+        if (parentReference.Object != null)
+            return parentReference.Object;
 
-	public TScope CreateChildFromPackedScene<TScope>(PackedScene scene, IInstaller installer = null) where TScope : LifetimeScope
-	{
-		Node sceneNode = scene.Instantiate();
-		var child = sceneNode.GetChildren().FirstOrDefault() as TScope;
-		if (child == null)
-		{
-			GD.PushWarning($"PackedScene {scene.ResourcePath} does not contain a {typeof(TScope).Name}.");
-			return null;
-		}
+        // Find via implementation
+        var implParent = FindParent();
+        if (implParent != null)
+        {
+            if (parentReference.Type != null && parentReference.Type != implParent.GetType())
+            {
+                GD.PushWarning($"FindParent returned {implParent.GetType()} but parent parentReference type is {parentReference.Type}. This may be unintentional.");
+            }
 
-		if (installer != null)
-		{
-			child.localExtraInstallers.Add(installer);
-		}
+            return implParent;
+        }
 
-		child.ParentReference.Object = this;
-		AddChild(child);
-		return child;
-	}
+        // Find in scene via type
+        if (parentReference.Type != null && parentReference.Type != GetType())
+        {
+            if (Find(parentReference.Type) is { Container: not null } foundScope)
+                return foundScope;
 
-	public TScope CreateChildFromPackedScene<TScope>(PackedScene scene, Action<IContainerBuilder> installation) where TScope : LifetimeScope
-		=> CreateChildFromPackedScene<TScope>(scene, new ActionInstaller(installation));
+            throw new VContainerParentTypeReferenceNotFound(parentReference.Type, $"{Name} could not found parent reference of type : {parentReference.Type}");
+        }
 
-	void InstallTo(IContainerBuilder builder)
-	{
-		Configure(builder);
+        lock (SyncRoot)
+        {
+            if (GlobalOverrideParents.Count > 0)
+            {
+                return GlobalOverrideParents.Peek();
+            }
+        }
 
-		foreach (IInstaller installer in localExtraInstallers)
-		{
-			installer.Install(builder);
-		}
+        if (parentReference.Type != null && parentReference.Type != GetType())
+        {
+            if (Find(parentReference.Type) is { Container: not null } foundScope)
+                return foundScope;
 
-		localExtraInstallers.Clear();
+            throw new VContainerParentTypeReferenceNotFound(parentReference.Type, $"{Name} could not found parent reference of type : {parentReference.Type}");
+        }
 
-		lock (SyncRoot)
-		{
-			foreach (IInstaller installer in GlobalExtraInstallers)
-			{
-				installer.Install(builder);
-			}
-		}
+        if (parentReference.Type != null)
+        {
+            GD.PushWarning("Parent reference cannot be same as self.");
+        }
 
-		builder.RegisterInstance(this).AsSelf();
-		EntryPointsBuilder.EnsureDispatcherRegistered(builder);
-	}
+        parentReference = ParentReference.Create<RootLiftScope>(GetType());
+        return null;
+    }
 
-	protected virtual LifetimeScope FindParent() => null;
+    void AutoInjectAll()
+    {
+        if (autoInjectGameObjects == null)
+            return;
 
-	LifetimeScope GetRuntimeParent()
-	{
-		if (IsRoot) return null;
+        foreach (Node target in autoInjectGameObjects)
+        {
+            if (target != null) // Check missing reference
+            {
+                Container.InjectNode(target);
+            }
+        }
+    }
 
-		if (ParentReference.Object != null)
-			return ParentReference.Object;
+    public void SetParent(LifetimeScope awakenParent)
+    {
+        if (parentReference.Type != awakenParent.GetType())
+            return;
 
-		// Find via implementation
-		LifetimeScope implParent = FindParent();
-		if (implParent != null)
-		{
-			if (ParentReference.Type != null && ParentReference.Type != implParent.GetType())
-			{
-				GD.PushWarning($"FindParent returned {implParent.GetType()} but parent parentReference type is {ParentReference.Type}. This may be unintentional.");
-			}
-
-			return implParent;
-		}
-
-		// Find in scene via type
-		if (ParentReference.Type != null && ParentReference.Type != GetType())
-		{
-			if (Find(ParentReference.Type) is { Container: not null } foundScope)
-				return foundScope;
-
-			throw new VContainerParentTypeReferenceNotFound(ParentReference.Type, $"{Name} could not found parent reference of type : {ParentReference.Type}");
-		}
-
-		lock (SyncRoot)
-		{
-			if (GlobalOverrideParents.Count > 0)
-			{
-				return GlobalOverrideParents.Peek();
-			}
-		}
-
-		if (ParentReference.Type == null)
-		{
-			ParentReference = ParentReference.Create<RootLiftScope>(GetType());
-		}
-
-		if (ParentReference.Type == GetType())
-		{
-			GD.PushWarning("Parent reference cannot be same as self.");
-			ParentReference = ParentReference.Create<RootLiftScope>(GetType());
-		}
-
-		if (ParentReference.Type != null && ParentReference.Type != GetType())
-		{
-			if (Find(ParentReference.Type) is { Container: not null } foundScope)
-				return foundScope;
-
-			throw new VContainerParentTypeReferenceNotFound(ParentReference.Type, $"{Name} could not found parent reference of type : {ParentReference.Type}");
-		}
-
-		return null;
-	}
-
-	void AutoInjectAll()
-	{
-		if (autoInjectGameObjects == null)
-			return;
-
-		foreach (Node target in autoInjectGameObjects)
-		{
-			if (target != null) // Check missing reference
-			{
-				Container.InjectNode(target);
-			}
-		}
-	}
+        parentReference.Object = awakenParent;
+    }
 }

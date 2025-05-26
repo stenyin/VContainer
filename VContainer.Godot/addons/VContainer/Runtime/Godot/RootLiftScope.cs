@@ -6,50 +6,50 @@ namespace VContainer.Godot;
 public partial class RootLiftScope : LifetimeScope
 {
 	private Window treeRoot;
-	private static RootLiftScope _instance;
 
-	public override void _EnterTree()
+	public RootLiftScope()
 	{
-		if (_instance != null)
+		if (Root != null)
 		{
 			throw new System.InvalidOperationException("RootLiftScope is already instantiated. Do not instantiate it manually.");
 		}
 
-		Root = _instance = this;
-		treeRoot = GetTree().Root;
-
-		base._EnterTree();
-		treeRoot.ChildEnteredTree += OnChildEnteredTreeRoot;
+		Root = this;
 	}
 
-	public override void _ExitTree()
+	public override void _EnterTree()
 	{
-		if (_instance == this)
-		{
-			_instance = null;
-			Root = null;
-		}
-
-		treeRoot.ChildEnteredTree -= OnChildEnteredTreeRoot;
-		treeRoot = null;
+		treeRoot = GetTree().Root;
+		treeRoot.ChildEnteredTree += OnChildEnteredTreeRoot;
+		base._EnterTree();
 	}
 
-	static readonly List<LifetimeScope> WaitingList = new List<LifetimeScope>();
+	protected override void Dispose(bool disposing)
+	{
+		base.Dispose(disposing);
+		if (!disposing)
+			return;
+
+		if (Root == this)
+			Root = null;
+
+		if (treeRoot != null)
+		{
+			treeRoot.ChildEnteredTree -= OnChildEnteredTreeRoot;
+			treeRoot = null;
+		}
+	}
+
+	private static readonly List<LifetimeScope> WaitingList = new(4);
 
 	internal static bool WaitingListContains(LifetimeScope lifetimeScope)
-	{
-		return WaitingList.Contains(lifetimeScope);
-	}
+		=> WaitingList.Contains(lifetimeScope);
 
 	internal static void EnqueueReady(LifetimeScope lifetimeScope)
-	{
-		WaitingList.Add(lifetimeScope);
-	}
+		=> WaitingList.Add(lifetimeScope);
 
 	internal static void CancelReady(LifetimeScope lifetimeScope)
-	{
-		WaitingList.Remove(lifetimeScope);
-	}
+		=> WaitingList.Remove(lifetimeScope);
 
 	public static void ReadyWaitingChildren(LifetimeScope awakenParent)
 	{
@@ -59,10 +59,7 @@ public partial class RootLiftScope : LifetimeScope
 		for (int i = WaitingList.Count - 1; i >= 0; i--)
 		{
 			LifetimeScope waitingScope = WaitingList[i];
-			if (waitingScope.ParentReference.Type != awakenParent.GetType())
-				continue;
-
-			waitingScope.ParentReference.Object = awakenParent;
+			waitingScope.SetParent(awakenParent);
 			WaitingList.RemoveAt(i);
 			buffer.Add(waitingScope);
 		}

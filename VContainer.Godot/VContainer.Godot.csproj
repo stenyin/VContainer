@@ -4,8 +4,12 @@
         <EnableDynamicLoading>true</EnableDynamicLoading>
     </PropertyGroup>
     <ItemGroup>
-        <None Include=".Tests/*"/>
+        <None Include=".Tests/**"/>
         <None Include="**/*.tscn"/>
         <None Include="project.godot"/>
+    </ItemGroup>
+    <ItemGroup>
+        <Compile Remove="template_scripts/**"/>
+        <Content Include="template_scripts/**/*.cs"/>
     </ItemGroup>
 </Project>

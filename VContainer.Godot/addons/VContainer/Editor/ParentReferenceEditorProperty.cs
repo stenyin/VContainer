@@ -1,12 +1,10 @@
 using Godot;
 using System;
 using System.Collections.Generic;
-using VContainer.Godot;
-using VContainer.Internal;
 using System.Linq;
 
 #if TOOLS
-namespace VContainer.Editor;
+namespace VContainer.Godot.Editor;
 
 public partial class ParentReferenceEditorProperty : EditorProperty
 {
@@ -16,7 +14,7 @@ public partial class ParentReferenceEditorProperty : EditorProperty
 	}
 
 	static string GetLabel(Type type) => $"{type.Namespace}/{type.Name}";
-	
+
 	string[] names;
 	private OptionButton optionButton = new OptionButton();
 
@@ -24,29 +22,28 @@ public partial class ParentReferenceEditorProperty : EditorProperty
 	{
 		AddChild(optionButton);
 		AddFocusable(optionButton);
-		
+
 		optionButton.ItemSelected += HandleOptionItemSelected;
 	}
-	
+
 	public override void _UpdateProperty()
 	{
 		if (names == null)
 		{
 			names = GetAllTypeNames();
 		}
-		
+
 		optionButton.Clear();
 		foreach (var name in names)
 		{
 			optionButton.AddItem(name);
 		}
-		
+
 		var value = GetEditedObject().Get(GetEditedProperty()).AsString();
 		var index = Array.IndexOf(names, value);
 		optionButton.Select(index);
-		
 	}
-	
+
 	private void HandleOptionItemSelected(long index)
 	{
 		GetEditedObject().Set(GetEditedProperty(), names[index]);

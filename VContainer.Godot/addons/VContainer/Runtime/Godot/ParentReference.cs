@@ -27,17 +27,18 @@ public partial struct ParentReference
 
 	[Required] public Type OwnerType { get; init; }
 	public Type Type { get; private set; }
-	
+
 	ParentReference(Type type) : this()
 	{
 		Type = type;
 		typeName = type.FullName;
 		Object = null;
 	}
-	
-	
+
+
 	ParentReference(Type ownerType, Type type) : this()
 	{
+		OwnerType = ownerType;
 		Type = type;
 		typeName = type.FullName;
 		Object = null;

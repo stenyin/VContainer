@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3 uid="uid://ddrsxy5oldvk2"]
+
+[ext_resource type="Script" uid="uid://cisg1qr0kx7cd" path="res://TestLifetimeScope.cs" id="1_froh8"]
+
+[node name="TestLifetimeScope" type="Node"]
+script = ExtResource("1_froh8")
+ParentTypeName = "VContainer.Godot.RootLiftScope"
+metadata/_custom_type_script = "uid://cisg1qr0kx7cd"
